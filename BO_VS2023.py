@@ -4,8 +4,6 @@ from warnings import catch_warnings, simplefilter
 import numpy as np
 from numpy import arange, around, vstack, asarray, argmin
 from scipy.stats import norm
-from scipy.optimize import minimize
-import matplotlib.pyplot as plt
 from skopt.space import Space
 from skopt.sampler import Lhs
 from sklearn.model_selection import KFold
@@ -45,16 +43,11 @@ class OptParam(object):
         self.space = None
 
 
-
 def sort_desvar(desvars):
     desvars2 = []
     for i in range(MAX_LAYERS):
-        if i == 0:
-            T1, T2, T3 = desvars[0:3] * 89
-            desvars2.append([abs(T1), T2, abs(T3)])
-        elif desvars[4 * i + 2] == 1:
-            T1, T2, T3 = desvars[3 + 4 * (i - 1):6 + 4 * (i - 1)] * 89
-            desvars2.append([abs(T1), T2, abs(T3)])
+        T1, T2, T3 = desvars[3*i:3*(i+1)] * 89
+        desvars2.append([abs(T1), T2, abs(T3)])
     return around(desvars2, 2)
 
 
@@ -100,7 +93,7 @@ def acq_EI(X, Xsamples, model, xi=0.01):
 
     '''
     mu, sigma = model.predict(X, return_std=True)
-    Xsamples = Xsamples.reshape(len(Xsamples), INPUT_VARS - 1)
+    Xsamples = Xsamples.reshape(len(Xsamples), -1)
     # Ysamples,_ = surrogate(model, Xsamples)
     mu_sample, sigma_sam = model.predict(Xsamples, return_std=True)
 
@@ -149,7 +142,7 @@ def opt_acquisition(X, y, op, model, Acq_fun="LCB", weight=-1, seed_val=6):
     gs = (rel_vol != -100)
     rel_vol = rel_vol[gs]
 
-    Xsamples = Xsamples.reshape(len(Xsamples), INPUT_VARS - 1)
+    Xsamples = Xsamples.reshape(len(Xsamples), -1)
     Xsamples = Xsamples[gs]
 
     # calculate the acquisition function for each sample
@@ -174,7 +167,7 @@ def random_desvar(op, seed_val=6):
     des_sample = around(X, 5)
     ds = asarray(des_sample)
 
-    des_sample = ds.reshape(len(ds), INPUT_VARS - 1)
+    des_sample = ds.reshape(len(ds), -1)
 
     return around(des_sample, 5)
 
@@ -210,7 +203,7 @@ if __name__ == '__main__':
     ny_optimization = 30
     ny_verification = 30
 
-    layers_loads = (#(1,  50e3),
+    layers_loads = ((1,  50e3),
                     (2, 100e3),
                     (2, 200e3),
                     (2, 500e3),
@@ -274,8 +267,6 @@ if __name__ == '__main__':
             des_space.append(theta_space)
             des_space.append(theta_space)
             des_space.append(theta_space)
-            if i != 0:
-                des_space.append([0, 1])
 
         # ___________________________________________________________
         #  CALCULATING INITIAL SAMPLE POINTS
@@ -295,14 +286,11 @@ if __name__ == '__main__':
         Y_vol = []
         for des_i in X:
             ii += 1
-            if len(des_i) > 3 and np.sum(des_i[3::4]) == 0:
-                Y_obj, Pcr, Vol = -100, -100, -100
-            else:
-                print('DEBUG', des_i)
-                tmp_out = optim_test([des_i], geo_prop=geo_dict, mat_prop=mat_dict, ny=ny_init_sampling)
-                Y_obj = objective_function(design_load, tmp_out)
-                Pcr = tmp_out['Pcr']
-                Vol = tmp_out['volume']
+            des_i = np.atleast_2d(des_i.reshape(-1, 3))
+            tmp_out = optim_test(des_i, geo_prop=geo_dict, mat_prop=mat_dict, ny=ny_init_sampling)
+            Y_obj = objective_function(design_load, tmp_out)
+            Pcr = tmp_out['Pcr']
+            Vol = tmp_out['volume']
             Y.append(Y_obj)
             Y_Pcr.append(Pcr)
             Y_vol.append(Vol)
@@ -325,8 +313,7 @@ if __name__ == '__main__':
             des_space.append(theta_space)
             des_space.append(theta_space)
             des_space.append(theta_space)
-            if i != 0:
-                des_space.append([0, 1])
+
         # ___________________________________________________________
         ## Defining Dict for convenience
         op2 = OptParam()
@@ -360,8 +347,9 @@ if __name__ == '__main__':
         Y_Pcr = Y_Pcr[good_set]
         Y_vol = Y_vol[good_set]
         X = asarray(X[good_set])
-        ## reshape into rows and cols
-        X = X.reshape(len(X), INPUT_VARS - 1)
+
+        # reshape into rows and cols
+        # NOTE no longer needed: X = X.reshape(len(X), INPUT_VARS - 1)
         Y = Y.reshape(len(Y), 1)
 
         # ___________________________________________________________
@@ -411,7 +399,8 @@ if __name__ == '__main__':
                                     weight=EE_weight, seed_val=(i + 1))
 
             # sample the point
-            tmp_out = optim_test([x_new], geo_prop=geo_dict, mat_prop=mat_dict, ny=ny_optimization)
+            x_new = np.atleast_2d(x_new.reshape(-1, 3))
+            tmp_out = optim_test(x_new, geo_prop=geo_dict, mat_prop=mat_dict, ny=ny_optimization)
             actual = objective_function(design_load, tmp_out)
             ypcr = tmp_out['Pcr']
             yvol = tmp_out['volume']
@@ -420,7 +409,7 @@ if __name__ == '__main__':
             est = surrogate(model, x_new.reshape(1, -1))
 
             # add the data to the dataset
-            X = vstack((X, [x_new]))
+            X = vstack((X, x_new.reshape(1, -1)))
             Y = vstack((Y, [actual]))
             Y_Pcr = np.hstack((Y_Pcr, [ypcr]))
             Y_vol = np.hstack((Y_vol, [yvol]))
@@ -448,6 +437,7 @@ if __name__ == '__main__':
 
         print('Acquisition func:', Acquisition_func, 'w:', EE_weight)
         print('Best Result: x={}, Objective=%.5f'.format(xopt) % (Y[ix]))
+        xopt = np.atleast_2d(xopt.reshape(-1, 3))
         out = optim_test(xopt, geo_prop=geo_dict, mat_prop=mat_dict, ny=ny_verification)
         print('Volume:', out['volume'], 'Pcr:', abs(out['Pcr']) * 0.001, 'kN,', ' rel_vol =', out['rel_vol'])
 
