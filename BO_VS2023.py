@@ -2,7 +2,7 @@ import math
 from warnings import catch_warnings, simplefilter
 
 import numpy as np
-from numpy import arange, around, vstack, asarray, argmin
+from numpy import arange, around, vstack, asarray, argmin # TODO Use np. instead of importing all functions
 from scipy.stats import norm
 from skopt.space import Space
 from skopt.sampler import Lhs
@@ -15,7 +15,7 @@ from sklearn.metrics import mean_squared_error, r2_score
 from vat_buck import optim_test, objective_function
 
 
-global lobpcg_X, cg_x0, out
+global lobpcg_X, cg_x0, out # TODO Remove these global variables and use a dictionary instead
 
 lobpcg_X = {'0': [],
           '1': [],
@@ -32,9 +32,23 @@ test_min = dict(objective=10,
                 iter=0,
                 final_desvars=[])
 
-class OptParam(object):
+class OptParam:
+    """
+    # TODO Remove this class and use a dictionary instead
+
+    Class representing optimization parameters.
+    
+    Attributes:
+        n_samples (int): Number of samples.
+        del_theta_set (None or list): List of delta theta values.
+        theta_space (None or list): List of theta values.
+        total_iter (None or int): Total number of iterations.
+        space (None or list): List of space values.
+    """
+    
     __slots__ = ['n_samples', 'del_theta_set',
                  'theta_space', 'total_iter', 'space']
+    
     def __init__(self):
         self.n_samples = None
         self.del_theta_set = None
@@ -43,29 +57,54 @@ class OptParam(object):
         self.space = None
 
 
-def sort_desvar(desvars):
+def sort_desvar(desvars: list) -> list:
+    """
+    Sorts the given list of desvars and performs some calculations on each element.
+
+    Parameters:
+        desvars (list): The list of desvars to be sorted.
+
+    Returns:
+        list: The sorted and modified list of desvars.
+    """
     desvars2 = []
     for i in range(MAX_LAYERS):
-        T1, T2, T3 = desvars[3*i:3*(i+1)] * 89
+        T1, T2, T3 = desvars[3*i:3*(i+1)] * 89 # TODO Check if implementation is correct
         desvars2.append([abs(T1), T2, abs(T3)])
-    return around(desvars2, 2)
+    return np.around(desvars2, 2)
 
 
-# surrogate or approximation for the objective function
-def surrogate(model, X):
-    # catch any warning generated when making a prediction
+def surrogate(model, X: list) -> list:
+    """
+    Surrogate or approximation for the objective function
+
+    Parameters:
+        model (object): The trained model used for prediction.
+        X (array-like): The input data for prediction.
+
+    Returns:
+        array-like: The predicted mean values.
+    """
     with catch_warnings():
-        # ignore generated warnings
         simplefilter("ignore")
         mean, std = model.predict(X, return_std=True)
 
         return mean
 
 
-# probability of improvement acquisition function
-def acq_MPI(X, Xsamples, model):
+def acq_MPI(X: list, Xsamples: list, model):
+    """
+    Calculate the probability of improvement for a given set of samples.
+
+    Parameters:
+        X (array-like): The input data for prediction.
+        Xsamples (array-like): The set of samples to evaluate.
+        model: The surrogate model.
+
+    Returns:
+        probs: The probability of improvement for each sample.
+    """
     # calculate the best surrogate score found so far
-    # print('acq Xsample:', Xsamples)
     yhat = surrogate(model, X)
     best = max(yhat)
     # calculate mean and stdev via surrogate function
@@ -78,10 +117,10 @@ def acq_MPI(X, Xsamples, model):
 def acq_EI(X, Xsamples, model, xi=0.01):
     '''
     from:http://krasserm.github.io/2018/03/21/bayesian-optimization/
-    Computes the EI at points X based on existing samples X_sample
+    Computes the expected improvement at points X based on existing samples X_sample
     and Y_sample using a Gaussian process surrogate model.
 
-    Args:
+    Parameters:
         X: Points at which EI shall be computed (m x d).
         X_sample: Sample locations (n x d).
         Y_sample: Sample values (n x 1).
@@ -114,6 +153,14 @@ def acq_EI(X, Xsamples, model, xi=0.01):
 def acq_LCB(xsample, model, exploration_weight=0.3):
     """
     Computes the GP-Lower Confidence Bound
+
+    Parameters:
+        xsample: The input sample.
+        model: The surrogate model.
+        exploration_weight: The exploration weight.
+
+    Returns:
+        The lower confidence bound.
     """
 
     m, s = model.predict(xsample, return_std=True)
