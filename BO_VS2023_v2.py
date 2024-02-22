@@ -1,36 +1,14 @@
 import math
-from warnings import catch_warnings, simplefilter
-
 import numpy as np
-from numpy import arange, around, vstack, asarray, argmin # TODO Use np. instead of importing all functions
+from warnings import catch_warnings, simplefilter
 from scipy.stats import norm
 from skopt.space import Space
 from skopt.sampler import Lhs
 from sklearn.model_selection import KFold
-from sklearn.gaussian_process import kernels
-from sklearn.gaussian_process import GaussianProcessRegressor
+from sklearn.gaussian_process import kernels, GaussianProcessRegressor
 from sklearn.metrics import mean_squared_error, r2_score
 
-
 from vat_buck import optim_test, objective_function
-
-
-global lobpcg_X, cg_x0, out # TODO Remove these global variables and use a dictionary instead
-
-lobpcg_X = {'0': [],
-          '1': [],
-          '2': [],
-          '3': [],
-          '4': []}
-cg_x0 = {'0': [],
-           '1': [],
-           '2': [],
-           '3': [],
-           '4': []}
-test_min = dict(objective=10,
-                desvars=[],
-                iter=0,
-                final_desvars=[])
 
 class OptParam:
     """
@@ -164,8 +142,8 @@ def acq_LCB(xsample, model, exploration_weight=0.3):
     """
 
     m, s = model.predict(xsample, return_std=True)
-    m = asarray(m).reshape(len(m), 1)
-    s = asarray(s).reshape(len(s), 1)
+    m = np.asarray(m).reshape(len(m), 1)
+    s = np.asarray(s).reshape(len(s), 1)
 
     f_acqu = (1 - exploration_weight) * m - exploration_weight * s
     return f_acqu
@@ -190,7 +168,7 @@ def opt_acquisition(X, y, op, model, Acq_fun="LCB", weight=-1, seed_val=6):
     """
     # random search, generate random samples
     # TODO check whether the starting points should be random
-    Xsamples = asarray(random_desvar(op, seed_val=seed_val))
+    Xsamples = np.asarray(random_desvar(op, seed_val=seed_val))
 
     gs = np.zeros_like(Xsamples)
     rel_vol_list = []
@@ -200,7 +178,7 @@ def opt_acquisition(X, y, op, model, Acq_fun="LCB", weight=-1, seed_val=6):
         xvol = sort_desvar(desx)
         tmp_out = optim_test(xvol, geo_prop=geo_dict, mat_prop=mat_dict, ny=ny_check_fisibility)
         rel_vol_list.append(tmp_out['rel_vol'])
-    rel_vol = asarray(rel_vol_list)
+    rel_vol = np.asarray(rel_vol_list)
     gs = (rel_vol != -100)
     rel_vol = rel_vol[gs]
 
@@ -219,7 +197,7 @@ def opt_acquisition(X, y, op, model, Acq_fun="LCB", weight=-1, seed_val=6):
             weight = 0.3
         scores = acq_LCB(Xsamples, model, weight)
     # locate the index of the min scores
-    ix = argmin(scores)
+    ix = np.argmin(scores)
     return Xsamples[ix]
 
 
@@ -236,12 +214,12 @@ def random_desvar(op, seed_val=6):
     """
     lhs = Lhs(lhs_type="classic", criterion=None)
     X = lhs.generate(op.space.dimensions, n_samples=op.n_samples, random_state=seed_val)
-    des_sample = around(X, 5)
-    ds = asarray(des_sample)
+    des_sample = np.around(X, 5)
+    ds = np.asarray(des_sample)
 
     des_sample = ds.reshape(len(ds), -1)
 
-    return around(des_sample, 5)
+    return np.around(des_sample, 5)
 
 
 def k_fold_chk(IP_times):
@@ -277,9 +255,7 @@ def k_fold_chk(IP_times):
 
 if __name__ == '__main__':
     MAX_LAYERS = 3
-    ny_init_sampling = 30
-    ny_optimization = 30
-    ny_verification = 30
+    ny = {'init': 30, 'opt': 30, 'ver': 30}
 
     layers_loads = ((1,  50e3),
                     (2, 100e3),
@@ -335,8 +311,8 @@ if __name__ == '__main__':
         # DESIGN SPACE
 
         # keeping theta increment constant at 5 deg for initial sampling
-        theta_space = around(arange(0.0, 1, 15 / 89), 5)
-        del_theta_space = around(arange(-1, 1, 15 / del_theta), 5)
+        theta_space = np.around(np.arange(0.0, 1, 15 / 89), 5)
+        del_theta_space = np.around(np.arange(-1, 1, 15 / del_theta), 5)
 
         print('Begin Initial sample')
         X = []
@@ -365,7 +341,7 @@ if __name__ == '__main__':
         for des_i in X:
             ii += 1
             des_i = np.atleast_2d(des_i.reshape(-1, 3))
-            tmp_out = optim_test(des_i, geo_prop=geo_dict, mat_prop=mat_dict, ny=ny_init_sampling)
+            tmp_out = optim_test(des_i, geo_prop=geo_dict, mat_prop=mat_dict, ny=ny['init'])
             Y_obj = objective_function(design_load, tmp_out)
             Pcr = tmp_out['Pcr']
             Vol = tmp_out['volume']
@@ -377,15 +353,15 @@ if __name__ == '__main__':
                 print(ii, des_i, Y[-1])
 
         print('sample_Space done')
-        Yx = asarray(Y)
-        Xx = asarray(X)
+        Yx = np.asarray(Y)
+        Xx = np.asarray(X)
 
         load_dir = ""
         np.savetxt(load_dir + "finalx_{}kN_{}iter.csv".format(int(design_load / 1000), total_iter), Xx, delimiter=',')
         np.savetxt(load_dir + "finaly_{}kN_{}iter.csv".format(int(design_load / 1000), total_iter), Yx, delimiter=',')
 
-        theta_space = around(arange(0.0, 1, 2 * theta_increment / 90), 5)
-        del_theta_space = around(arange(-1, 1, theta_increment / del_theta), 5)
+        theta_space = np.around(np.arange(0.0, 1, 2 * theta_increment / 90), 5)
+        del_theta_space = np.around(np.arange(-1, 1, theta_increment / del_theta), 5)
         des_space = []
         for i in range(MAX_LAYERS):
             des_space.append(theta_space)
@@ -413,10 +389,10 @@ if __name__ == '__main__':
 
         # ___________________________________________________________
         # NORMALIZING OUTPUT FOR OPTIMIZATION
-        X = asarray(Xx)
-        Y = asarray(Yx).reshape(len(Yx))
-        Y_Pcr = asarray(Y_Pcr)
-        Y_vol = asarray(Y_vol)
+        X = np.asarray(Xx)
+        Y = np.asarray(Yx).reshape(len(Yx))
+        Y_Pcr = np.asarray(Y_Pcr)
+        Y_vol = np.asarray(Y_vol)
 
         good_set = Y != -100
         Y[~good_set] = 2
@@ -424,7 +400,7 @@ if __name__ == '__main__':
         Y = Y[good_set] / y_norm
         Y_Pcr = Y_Pcr[good_set]
         Y_vol = Y_vol[good_set]
-        X = asarray(X[good_set])
+        X = np.asarray(X[good_set])
 
         # reshape into rows and cols
         # NOTE no longer needed: X = X.reshape(len(X), INPUT_VARS - 1)
@@ -462,7 +438,7 @@ if __name__ == '__main__':
         for i in range(total_iter):
             if i == int(1 * total_iter / 5):
                 op2.n_samples = n_samples
-                op2.theta_space = around(arange(0.0, 1, theta_increment / (90)), 5)
+                op2.theta_space = np.around(np.arange(0.0, 1, theta_increment / (90)), 5)
             if i % 3 == 0:
                 EE_weight = 0.3
                 Acquisition_func = 'LCB'
@@ -478,7 +454,7 @@ if __name__ == '__main__':
 
             # sample the point
             x_new = np.atleast_2d(x_new.reshape(-1, 3))
-            tmp_out = optim_test(x_new, geo_prop=geo_dict, mat_prop=mat_dict, ny=ny_optimization)
+            tmp_out = optim_test(x_new, geo_prop=geo_dict, mat_prop=mat_dict, ny=ny['opt'])
             actual = objective_function(design_load, tmp_out)
             ypcr = tmp_out['Pcr']
             yvol = tmp_out['volume']
@@ -487,13 +463,13 @@ if __name__ == '__main__':
             est = surrogate(model, x_new.reshape(1, -1))
 
             # add the data to the dataset
-            X = vstack((X, x_new.reshape(1, -1)))
-            Y = vstack((Y, [actual]))
+            X = np.vstack((X, x_new.reshape(1, -1)))
+            Y = np.vstack((Y, [actual]))
             Y_Pcr = np.hstack((Y_Pcr, [ypcr]))
             Y_vol = np.hstack((Y_vol, [yvol]))
 
             if i % int(total_iter / 2) == 0:
-                ix = argmin(Y)
+                ix = np.argmin(Y)
                 print('=> iter {} of {} , f()=%3.4f, actual=%.4f'.format(i + 1, total_iter) % (est, actual))
                 print('\n Best Result yet: x={}, y=%.5f'.format(X[ix]) % (Y[ix]))
 
@@ -509,14 +485,14 @@ if __name__ == '__main__':
                 break
 
         ##best result
-        ix = argmin(Y)
+        ix = np.argmin(Y)
         print('Max_layer:{}, Design Load:{} N'.format(MAX_LAYERS, design_load))
         xopt = sort_desvar(X[ix])
 
         print('Acquisition func:', Acquisition_func, 'w:', EE_weight)
         print('Best Result: x={}, Objective=%.5f'.format(xopt) % (Y[ix]))
         xopt = np.atleast_2d(xopt.reshape(-1, 3))
-        out = optim_test(xopt, geo_prop=geo_dict, mat_prop=mat_dict, ny=ny_verification)
+        out = optim_test(xopt, geo_prop=geo_dict, mat_prop=mat_dict, ny=ny['ver'])
         print('Volume:', out['volume'], 'Pcr:', abs(out['Pcr']) * 0.001, 'kN,', ' rel_vol =', out['rel_vol'])
 
         np.savetxt("xopt{}t_iter{}_{}kN_{}.csv".format(ini_times, total_iter, int(design_load / 1000),
