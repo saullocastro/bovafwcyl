@@ -10,31 +10,6 @@ from sklearn.metrics import mean_squared_error, r2_score
 
 from vat_buck import optim_test, objective_function
 
-class OptParam:
-    """
-    # TODO Remove this class and use a dictionary instead
-
-    Class representing optimization parameters.
-    
-    Attributes:
-        n_samples (int): Number of samples.
-        del_theta_set (None or list): List of delta theta values.
-        theta_space (None or list): List of theta values.
-        total_iter (None or int): Total number of iterations.
-        space (None or list): List of space values.
-    """
-    
-    __slots__ = ['n_samples', 'del_theta_set',
-                 'theta_space', 'total_iter', 'space']
-    
-    def __init__(self):
-        self.n_samples = None
-        self.del_theta_set = None
-        self.theta_space = None
-        self.total_iter = None
-        self.space = None
-
-
 def sort_desvar(desvars: list) -> list:
     """
     Sorts the given list of desvars and performs some calculations on each element.
@@ -213,7 +188,7 @@ def random_desvar(op, seed_val=6):
         The random sample of desvars.
     """
     lhs = Lhs(lhs_type="classic", criterion=None)
-    X = lhs.generate(op.space.dimensions, n_samples=op.n_samples, random_state=seed_val)
+    X = lhs.generate(op['space'].dimensions, n_samples=op['n_samples'], random_state=seed_val)
     des_sample = np.around(X, 5)
     ds = np.asarray(des_sample)
 
@@ -324,12 +299,8 @@ if __name__ == '__main__':
 
         # ___________________________________________________________
         #  CALCULATING INITIAL SAMPLE POINTS
-        op = OptParam()
-        op.n_samples = ini_pop_size
-        op.del_theta_set = del_theta_space
-        op.theta_space = theta_space
-        op.total_iter = total_iter
-        op.space = Space(des_space)
+        op = {'n_samples': ini_pop_size, 'del_theta_set': del_theta_space,
+              'theta_space': theta_space, 'total_iter': total_iter, 'space': Space(des_space)}
 
         ii = 0
         Y = []
@@ -370,13 +341,9 @@ if __name__ == '__main__':
 
         # ___________________________________________________________
         ## Defining Dict for convenience
-        op2 = OptParam()
-        op2.n_samples = int(n_samples / 2)
-        op2.del_theta_set = del_theta_space
-        op2.theta_space = theta_space
-        op2.total_iter = total_iter
-        op2.space = Space(des_space)
-
+        op2 = {'n_samples': int(n_samples / 2), 'del_theta_set': del_theta_space,
+              'theta_space': theta_space, 'total_iter': total_iter, 'space': Space(des_space)}
+        
         # ___________________________________________________________
         # Total Design Space calculation
         total_des_space = 1
@@ -437,8 +404,8 @@ if __name__ == '__main__':
         ## Optimization
         for i in range(total_iter):
             if i == int(1 * total_iter / 5):
-                op2.n_samples = n_samples
-                op2.theta_space = np.around(np.arange(0.0, 1, theta_increment / (90)), 5)
+                op2['n_samples'] = n_samples
+                op2['theta_space'] = np.around(np.arange(0.0, 1, theta_increment / (90)), 5)
             if i % 3 == 0:
                 EE_weight = 0.3
                 Acquisition_func = 'LCB'
