@@ -14,14 +14,14 @@ Make sure to install the following libraries:
 
     python -m pip install numpy openmdao scipy skopt sklearn composites bfsccylinder
 
-How to run the Bayesian Optimization code?
+How to run the Bayesian optimization code?
 ---
 The main file to be run is the `bovafwcyl.py`:
 
     python bovafwcyl.py
 
 
-Changing parameters for the Bayesian Optimizer
+Changing parameters for the Bayesian optimizer
 ---
 Geometry, inside `bovafwcyl.py`, look for the `geo_dict` variable:
 
