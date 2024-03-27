@@ -218,7 +218,7 @@ if __name__ == '__main__':
         ## INPUTS
         global INPUT_VARS, X, Y, model, geo_dict, mat_dict, y_norm
 
-        # Geometric Parameters(m)
+        # Geometric Parameters
         geo_dict = dict(
             L=0.300, # length
             R=0.15 # radius
