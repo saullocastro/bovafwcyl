@@ -23,12 +23,12 @@ class MyGA(om.ExplicitComponent):
         self.pop_size = 25
         self.ny = 55
         # Geometric Parameters
-        self.geo_prop = dict(
-            L=0.300,
-            R=0.15
+        self.geo_dict = dict(
+            L=0.300, # length
+            R=0.15 # radius
         )
         # Material Properties, default values from CS-Z Wang et al.
-        self.mat_prop = dict(
+        self.mat_dict = dict(
             E11=90e9,
             E22=7e9,
             nu12=0.32,
@@ -96,8 +96,8 @@ class MyGA(om.ExplicitComponent):
 
         else:
             out = optim_test(desvars=desvars,
-                             geo_prop=self.geo_prop,
-                             mat_prop=self.mat_prop,
+                             geo_prop=self.geo_dict,
+                             mat_prop=self.mat_dict,
                              ny=self.ny,
                              lobpcg_X=self.lobpcg_X[num_layers],
                              cg_x0=self.cg_x0[num_layers])

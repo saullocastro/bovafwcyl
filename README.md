@@ -12,35 +12,35 @@ Before running this code
 ---
 Make sure to install the following libraries:
 
-    python -m pip install numpy scipy skopt sklearn composites bfsccylinder
+    python -m pip install numpy openmdao scipy skopt sklearn composites bfsccylinder
 
-How to run this code?
+How to run the Bayesian Optimization code?
 ---
 The main file to be run is the `bovafwcyl.py`:
 
     python bovafwcyl.py
 
 
-Changing parameters
+Changing parameters for the Bayesian Optimizer
 ---
 Geometry, inside `bovafwcyl.py`, look for the `geo_dict` variable:
 
-        geo_dict = dict(
-            L=0.300, # length
-            R=0.15 # radius
-        )
+    geo_dict = dict(
+        L=0.300, # length
+        R=0.15 # radius
+    )
 
 
-Material properties, inside `bovafwcyl.py`, look for the `mat_dict` variable:
+Material properties, look for the `mat_dict` variable:
 
-        mat_dict = dict(
-            E11=90e9,
-            E22=7e9,
-            nu12=0.32,
-            G12=4.4e9,
-            G23=1.8e9,
-            plyt=0.4e-3 # ply thickness
-        )
+    mat_dict = dict(
+        E11=90e9,
+        E22=7e9,
+        nu12=0.32,
+        G12=4.4e9,
+        G23=1.8e9,
+        plyt=0.4e-3 # ply thickness
+    )
 
 Number of layers and design loads, look for the `layers_loads` variable:
 
@@ -63,6 +63,57 @@ defaul values are recommended, based on previous convergence analyses:
     ny_init_sampling = 55
     ny_optimization = 55
     ny_verification = 65
+
+
+How to run the genetic algorithm (GA) optimizer?
+---
+The main file to be run is the `openmdao_GA.py`:
+
+    python openmdao_GA.py
+
+Changing parameters for the genetic algorithm
+---
+Maximum number of generations and population size, inside `openmdao_GA.py`,
+look for the `max_gen` and `pop_size` attributes of the `MyGA` class:
+    
+    self.max_gen = 100
+    self.pop_size = 25
+
+
+Geometry, look for the `geo_dict` attribute of the `MyGA` class:
+
+    self.geo_dict = dict(
+        L=0.300, # length
+        R=0.15 # radius
+    )
+
+Material properties, look for the `mat_dict` attribute:
+
+    self.mat_dict = dict(
+        E11=90e9,
+        E22=7e9,
+        nu12=0.32,
+        G12=4.4e9,
+        G23=1.8e9,
+        plyt=0.4e-3 # ply thickness
+    )
+
+Design loads, look for the `design_loads` list:
+
+    design_loads = [
+        50e3,
+        100e3,
+        200e3,
+        500e3,
+        1000e3,
+    ]
+
+Discretization level, currently controlled by the number of elements along the
+circumferential direction `ny`, look for the following attribute of the `MyGA`
+class, where the defaul corresponds to what is being used for the Bayesian
+optimization:
+
+    self.ny = 55
 
 
 Authors
