@@ -10,20 +10,20 @@ The finite element being used to discretize the problem is the SC-BFSC, availabl
 
 Before running this code
 ---
-Make sure to install the following libraries::
+Make sure to install the following libraries:
 
     python -m pip install numpy scipy skopt sklearn composites bfsccylinder
 
 How to run this code?
 ---
-The main file to be run is the `bovafwcyl.py`::
+The main file to be run is the `bovafwcyl.py`:
 
     python bovafwcyl.py
 
 
 Changing parameters
 ---
-Geometry, inside `bovafwcyl.py`, look for the `geo_dict` variable::
+Geometry, inside `bovafwcyl.py`, look for the `geo_dict` variable:
 
         geo_dict = dict(
             L=0.300, # length
@@ -31,7 +31,7 @@ Geometry, inside `bovafwcyl.py`, look for the `geo_dict` variable::
         )
 
 
-Material properties, inside `bovafwcyl.py`, look for the `mat_dict` variable::
+Material properties, inside `bovafwcyl.py`, look for the `mat_dict` variable:
 
         mat_dict = dict(
             E11=90e9,
@@ -42,7 +42,7 @@ Material properties, inside `bovafwcyl.py`, look for the `mat_dict` variable::
             plyt=0.4e-3 # ply thickness
         )
 
-Number of layers and design loads, look for the `layers_loads` variable::
+Number of layers and design loads, look for the `layers_loads` variable:
 
     layers_loads = (
                     (1,  50e3),
@@ -58,7 +58,7 @@ Number of layers and design loads, look for the `layers_loads` variable::
 
 Discretization level, currently controlled by the number of elements along the
 circumferential direction `ny`, look for the following variables, where the
-defaul values are recommended, based on previous convergence analyses::
+defaul values are recommended, based on previous convergence analyses:
 
     ny_init_sampling = 55
     ny_optimization = 55
