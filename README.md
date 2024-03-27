@@ -67,7 +67,11 @@ defaul values are recommended, based on previous convergence analyses:
 
 Authors
 ---
+
 Aravind Ashok (original MSc thesis http://resolver.tudelft.nl/uuid:f0b2cdec-d5d8-4d98-83fe-da1f3ffc8d6d )
+
 Saullo G. P. Castro (supervision, code cleanup, code curator)
+
 Gad Marconi (code cleanup)
+
 J. H. Almeida Jr. (validation, formal analysis)
