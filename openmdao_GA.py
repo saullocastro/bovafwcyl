@@ -135,7 +135,14 @@ if __name__ == '__main__':
     #NOTE on Apple Macbookpro M2 chipset, running in parallel using
     #     multiprocessing.Pool led to a worse performance, because the
     #     scipy.sparse.linalg solvers can already use quite well the SMP
-    for design_load in [50e3, 100e3, 200e3, 500e3, 1000e3]:
+    design_loads = [
+        50e3,
+        100e3,
+        200e3,
+        500e3,
+        1000e3,
+    ]
+    for design_load in design_loads:
         print('___________')
         print()
         print('DESIGN LOAD', design_load)
