@@ -71,6 +71,16 @@ The main file to be run is the `openmdao_GA.py`:
 
     python openmdao_GA.py
 
+This will create pickle files with names like:
+
+    GA_0050_kN_best_individual.pickle
+    GA_0050_kN_individuals.pickle
+
+You can then post-process these optimization results using:
+
+    python openmdao_GA_post.py
+
+
 Changing parameters for the genetic algorithm
 ---
 Maximum number of generations and population size, inside `openmdao_GA.py`,
@@ -98,7 +108,8 @@ Material properties, look for the `mat_dict` attribute:
         plyt=0.4e-3 # ply thickness
     )
 
-Design loads, look for the `design_loads` list:
+Design loads, in both files `openmdao_GA.py` and `openmdao_GA_post.py`, look
+for the `design_loads` list:
 
     design_loads = [
         50e3,
