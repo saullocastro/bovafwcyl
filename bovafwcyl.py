@@ -198,12 +198,12 @@ def k_fold_chk(IP_times):
 
 
 if __name__ == '__main__':
-    MAX_LAYERS = 3
-    ny_init_sampling = 30
-    ny_optimization = 30
-    ny_verification = 30
+    ny_init_sampling = 55
+    ny_optimization = 55
+    ny_verification = 65
 
-    layers_loads = ((1,  50e3),
+    layers_loads = (
+                    (1,  50e3),
                     (2, 100e3),
                     (2, 200e3),
                     (2, 500e3),
@@ -211,7 +211,8 @@ if __name__ == '__main__':
                     (3, 500e3),
                     (3, 1000e3),
                     (4, 500e3),
-                    (4, 1000e3))
+                    (4, 1000e3)
+                    )
     for MAX_LAYERS, design_load in layers_loads:
         # ___________________________________________________________
         ## INPUTS
@@ -219,18 +220,18 @@ if __name__ == '__main__':
 
         # Geometric Parameters(m)
         geo_dict = dict(
-            L=0.300,
-            R=0.15
+            L=0.300, # length
+            R=0.15 # radius
         )
 
-        # Material Properties
+        # Material Properties, default values from CS-Z Wang et al.
         mat_dict = dict(
-            E11=90e9,  # CS-Z wang
+            E11=90e9,
             E22=7e9,
             nu12=0.32,
             G12=4.4e9,
             G23=1.8e9,
-            plyt=0.4e-3
+            plyt=0.4e-3 # ply thickness
         )
 
         # Objective Parameters
