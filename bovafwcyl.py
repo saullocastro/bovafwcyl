@@ -175,7 +175,7 @@ def plot_bo_frame(X, Y, model, x_new=None, t=1, save_path=None):
     acq_max_idx = np.argmax(ei)
     ax2.plot(X_grid[acq_max_idx], ei[acq_max_idx], 'v', color='red', markersize=10)
 
-    # Instead of arrow, write label inside the shaded area
+    # Acq. func. label
     ax2.text(0.05, 0.95 * ax2.get_ylim()[1], 'Acquisition Function\n$u(\\cdot)$',
              fontsize=14, fontname = "Times New Roman", color='green', ha='left', va='top')
 
@@ -186,7 +186,7 @@ def plot_bo_frame(X, Y, model, x_new=None, t=1, save_path=None):
     ax1.set_ylim(mu.min() - 0.2, mu.max() + 0.2)
     ax2.set_ylim(0, np.max(ei) * 1.4)
 
-    # Remove black borders
+    # No borders for subplot
     for ax in [ax1, ax2]:
         for spine in ax.spines.values():
             spine.set_visible(False)
