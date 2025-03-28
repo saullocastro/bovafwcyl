@@ -76,10 +76,10 @@ This will create pickle files with names like:
     GA_0050_kN_best_individual.pickle
     GA_0050_kN_individuals.pickle
 
-You can then post-process these optimization results using:
+You can then post-process these optimization results using either of the two:
 
     python openmdao_GA_post.py
-
+    Pickle_CSV.py to get pickle files data into .cv for easy view and understanding
 
 Changing parameters for the genetic algorithm
 ---
