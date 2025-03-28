@@ -11,6 +11,8 @@ from sklearn.gaussian_process import kernels
 from sklearn.gaussian_process import GaussianProcessRegressor
 from sklearn.metrics import mean_squared_error, r2_score
 
+import matplotlib.pyplot as plt
+from scipy.stats import norm
 
 from vat_buck import optim_test, objective_function
 
@@ -122,6 +124,78 @@ def acq_LCB(xsample, model, exploration_weight=0.3):
 
     f_acqu = (1 - exploration_weight) * m - exploration_weight * s
     return f_acqu
+
+def plot_bo_frame(X, Y, model, x_new=None, t=1, save_path=None):
+    X_grid = np.linspace(0, 1, 500).reshape(-1, 1)
+    dim = X.shape[1]
+    X_full = np.tile(X_grid, (1, dim))
+
+    mu, sigma = model.predict(X_full, return_std=True)
+    sigma[sigma < 1e-6] = 1e-6
+
+    best_y = np.min(Y)
+    xi = 0.01
+    imp = best_y - mu - xi
+    Z = imp / (sigma + 1e-9)
+    ei = imp * norm.cdf(Z) + sigma * norm.pdf(Z)
+    ei[sigma < 1e-8] = 0
+
+    fig, (ax1, ax2) = plt.subplots(2, 1, figsize=(10, 5),
+                                   sharex=True,
+                                   gridspec_kw={"height_ratios": [3, 1]})
+
+    # Posterior plot
+    x_vals = X_grid.flatten()
+    mu_vals = mu.flatten()
+    sigma_vals = sigma.flatten()
+
+    ax1.fill_between(x_vals, mu_vals - sigma_vals, mu_vals + sigma_vals,
+                     color='skyblue', alpha=0.4, zorder=0)
+    ax1.plot(x_vals, mu_vals, 'k-', lw=2)
+
+    # Dashed line for observations
+    shown_obs = min(10, len(X))
+    ax1.plot(X[:shown_obs, 0], Y[:shown_obs], 'bo', markersize=5)
+    if x_new is not None:
+        y_new = surrogate(model, x_new)
+        ax1.plot(x_new[0, 0], y_new, 'ro', markersize=7)
+        ax1.annotate("new observation", xy=(x_new[0, 0], y_new),
+                     xytext=(x_new[0, 0] + 0.04, y_new + 0.3),
+                     arrowprops=dict(arrowstyle="->", lw=1.5), fontsize=14, fontname = "Times New Roman")
+        
+    ax1.set_ylabel("Objective", fontname = "Times New Roman", fontsize=18, labelpad=5)
+    ax1.set_xticks([])
+    ax1.set_yticks([])
+
+    # Acquisition plot
+    ax2.fill_between(X_grid.flatten(), 0, ei, color='palegreen', alpha=0.5)
+    ax2.plot(X_grid, ei, 'g-', lw=2)
+
+    # Mark the acquisition max with a red triangle
+    acq_max_idx = np.argmax(ei)
+    ax2.plot(X_grid[acq_max_idx], ei[acq_max_idx], 'v', color='red', markersize=10)
+
+    # Instead of arrow, write label inside the shaded area
+    ax2.text(0.05, 0.95 * ax2.get_ylim()[1], 'Acquisition Function\n$u(\\cdot)$',
+             fontsize=14, fontname = "Times New Roman", color='green', ha='left', va='top')
+
+    ax2.set_ylabel("Acquisition", fontname = "Times New Roman", fontsize=18, labelpad=5)
+    ax2.set_xlabel("Design variable", fontname = "Times New Roman", fontsize=18, labelpad=18)
+    ax2.set_yticks([])
+    ax1.set_xlim(X_grid.min() - 0.05, X_grid.max() + 0.05)
+    ax1.set_ylim(mu.min() - 0.2, mu.max() + 0.2)
+    ax2.set_ylim(0, np.max(ei) * 1.4)
+
+    # Remove black borders
+    for ax in [ax1, ax2]:
+        for spine in ax.spines.values():
+            spine.set_visible(False)
+
+    fig.tight_layout(pad=2.0)
+    if save_path:
+        plt.savefig(save_path, dpi=1200, bbox_inches='tight')
+    else:
+        plt.show()
 
 
 # optimize the acquisition function
@@ -244,7 +318,7 @@ if __name__ == '__main__':
         ini_times = 10  # No of times of Input variables initial sample is
         ini_pop_size = ini_times * INPUT_VARS  # No of Initial points for GP fit
         n_samples = int(ini_pop_size/5)  # int(ini_pop_size/5)          	# Population size when optimizing
-        total_iter = 50  # Total iterations
+        total_iter = 3000  # Total iterations
         tol = 1e-3  # Tolerance
 
         Acquisition_func = 'LCB'  # Choose Between "MPI", "EI" or "LCB" (default LCB)
@@ -304,8 +378,8 @@ if __name__ == '__main__':
         Xx = asarray(X)
 
         load_dir = ""
-        np.savetxt(load_dir + "finalx_{}kN_{}iter.csv".format(int(design_load / 1000), total_iter), Xx, delimiter=',')
-        np.savetxt(load_dir + "finaly_{}kN_{}iter.csv".format(int(design_load / 1000), total_iter), Yx, delimiter=',')
+        np.savetxt(load_dir + "finalx_{}layered_{}kN_{}iter.csv".format(MAX_LAYERS, int(design_load / 1000), total_iter), Xx, delimiter=',')
+        np.savetxt(load_dir + "finaly_{}layered_{}kN_{}iter.csv".format(MAX_LAYERS, int(design_load / 1000), total_iter), Yx, delimiter=',')
 
         theta_space = around(arange(0.0, 1, 2 * theta_increment / 90), 5)
         del_theta_space = around(arange(-1, 1, theta_increment / del_theta), 5)
@@ -414,6 +488,9 @@ if __name__ == '__main__':
             Y = vstack((Y, [actual]))
             Y_Pcr = np.hstack((Y_Pcr, [ypcr]))
             Y_vol = np.hstack((Y_vol, [yvol]))
+            
+            if i % 100 == 0:  # just to keep track of how many iterations are done
+                print(f"Iteration #: {i}")
 
             if i % int(total_iter / 2) == 0:
                 ix = argmin(Y)
@@ -422,13 +499,23 @@ if __name__ == '__main__':
 
             # Fit the model for next iteration
             model.fit(X, Y)
+            
+            #design space plots, activate if needed
+            #if i in [15, 30, 75]:
+                #plot_bo_frame(X, Y, model, x_new=x_new, t=i, save_path=f"bo_frame_t{i}.pdf")
 
             Y_best.append(min(Y))
             Y_log.append(Y[-1])
             # Tolerance
-            delta = [abs(Y[-1:-5] - Y[-2:-6])]
-            if np.average(delta) <= tol:
-                print('Tolerance Achieved')
+            sorted_vals = np.round(np.sort(Y_vol)[::-1], decimals=10)
+
+            # Count occurrences of each value
+            unique_vals, counts = np.unique(sorted_vals, return_counts=True)
+
+            # Check if any value appears at least k times
+            k = 50  # or any threshold you want
+            if np.any(counts >= k):
+                print("Tolerance Achieved")
                 break
 
         ##best result
@@ -442,12 +529,11 @@ if __name__ == '__main__':
         out = optim_test(xopt, geo_prop=geo_dict, mat_prop=mat_dict, ny=ny_verification)
         print('Volume:', out['volume'], 'Pcr:', abs(out['Pcr']) * 0.001, 'kN,', ' rel_vol =', out['rel_vol'])
 
-        np.savetxt("xopt{}t_iter{}_{}kN_{}.csv".format(ini_times, total_iter, int(design_load / 1000),
+        np.savetxt("xopt{}t_iter{}_{}layered_{}kN_{}.csv".format(ini_times, total_iter, MAX_LAYERS, int(design_load / 1000),
                                                                   Acquisition_func), X[ini_pop_size:], delimiter=',')
-        np.savetxt("yopt{}t_iter{}_{}kN_{}.csv".format(ini_times, total_iter, int(design_load / 1000),
+        np.savetxt("yopt{}t_iter{}_{}layered_{}kN_{}.csv".format(ini_times, total_iter, MAX_LAYERS, int(design_load / 1000),
                                                                   Acquisition_func), Y[ini_pop_size:], delimiter=',')
-        np.savetxt("ypcr{}t_iter{}_{}kN_{}.csv".format(ini_times, total_iter, int(design_load / 1000),
+        np.savetxt("ypcr{}t_iter{}_{}layered_{}kN_{}.csv".format(ini_times, total_iter, MAX_LAYERS, int(design_load / 1000),
                                                                   Acquisition_func), Y_Pcr[ini_pop_size:], delimiter=',')
-        np.savetxt("yvol{}t_iter{}_{}kN_{}.csv".format(ini_times, total_iter, int(design_load / 1000),
+        np.savetxt("yvol{}t_iter{}_{}layered_{}kN_{}.csv".format(ini_times, total_iter, MAX_LAYERS, int(design_load / 1000),
                                                                   Acquisition_func), Y_vol[ini_pop_size:], delimiter=',')
-
