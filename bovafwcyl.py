@@ -474,7 +474,7 @@ if __name__ == '__main__':
                                     weight=EE_weight, seed_val=(i + 1))
 
             # sample the point
-            x_new = np.atleast_2d(x_new.reshape(-1, 3))
+            x_new = np.atleast_2d(x_new.reshape(-1, 3))*89
             tmp_out = optim_test(x_new, geo_prop=geo_dict, mat_prop=mat_dict, ny=ny_optimization)
             actual = objective_function(design_load, tmp_out)
             ypcr = tmp_out['Pcr']
