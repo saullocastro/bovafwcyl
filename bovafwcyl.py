@@ -48,7 +48,7 @@ class OptParam(object):
 def sort_desvar(desvars):
     desvars2 = []
     for i in range(MAX_LAYERS):
-        T1, T2, T3 = desvars[3*i:3*(i+1)] * 89
+        T1, T2, T3 = desvars[3*i:3*(i+1)]*(theta_max - theta_min) + theta_min
         desvars2.append([abs(T1), T2, abs(T3)])
     return around(desvars2, 2)
 
@@ -162,7 +162,7 @@ def plot_bo_frame(X, Y, model, x_new=None, t=1, save_path=None):
         ax1.annotate("new observation", xy=(x_new[0, 0], y_new),
                      xytext=(x_new[0, 0] + 0.04, y_new + 0.3),
                      arrowprops=dict(arrowstyle="->", lw=1.5), fontsize=14, fontname = "Times New Roman")
-        
+
     ax1.set_ylabel("Objective", fontname = "Times New Roman", fontsize=18, labelpad=5)
     ax1.set_xticks([])
     ax1.set_yticks([])
@@ -272,6 +272,7 @@ def k_fold_chk(IP_times):
 
 
 if __name__ == '__main__':
+    initial_sampling_size = 15
     ny_init_sampling = 55
     ny_optimization = 55
     ny_verification = 65
@@ -309,6 +310,8 @@ if __name__ == '__main__':
         )
 
         # Objective Parameters
+        theta_min = 3.3
+        theta_max = 87.7
         del_theta = 70  # in degrees; Max diffrence in angles of T1, T2 and T3
         theta_increment = 10  # in degrees; differnce between neighbouring angles
 
@@ -332,8 +335,8 @@ if __name__ == '__main__':
         # DESIGN SPACE
 
         # keeping theta increment constant at 5 deg for initial sampling
-        theta_space = around(arange(0.0, 1, 15 / 89), 5)
-        del_theta_space = around(arange(-1, 1, 15 / del_theta), 5)
+        theta_space = around(arange(0.0, 1, initial_sampling_size/90), 5)
+        del_theta_space = around(arange(-1, 1, initial_sampling_size/del_theta), 5)
 
         print('Begin Initial sample')
         X = []
@@ -381,8 +384,8 @@ if __name__ == '__main__':
         np.savetxt(load_dir + "finalx_{}layered_{}kN_{}iter.csv".format(MAX_LAYERS, int(design_load / 1000), total_iter), Xx, delimiter=',')
         np.savetxt(load_dir + "finaly_{}layered_{}kN_{}iter.csv".format(MAX_LAYERS, int(design_load / 1000), total_iter), Yx, delimiter=',')
 
-        theta_space = around(arange(0.0, 1, 2 * theta_increment / 90), 5)
-        del_theta_space = around(arange(-1, 1, theta_increment / del_theta), 5)
+        theta_space = around(arange(0.0, 1, 2*theta_increment/90), 5)
+        del_theta_space = around(arange(-1, 1, theta_increment/del_theta), 5)
         des_space = []
         for i in range(MAX_LAYERS):
             des_space.append(theta_space)
@@ -424,7 +427,6 @@ if __name__ == '__main__':
         X = asarray(X[good_set])
 
         # reshape into rows and cols
-        # NOTE no longer needed: X = X.reshape(len(X), INPUT_VARS - 1)
         Y = Y.reshape(len(Y), 1)
 
         # ___________________________________________________________
@@ -439,12 +441,14 @@ if __name__ == '__main__':
         mat32 = kernels.Matern(length_scale=len_scale, nu=1.5)
         kernel = mat32  # + ln1 * prdc
         # Normalizing False as its done already
-        model2 = GaussianProcessRegressor(kernel=kernel, normalize_y=False, optimizer='fmin_l_bfgs_b',
+        model2 = GaussianProcessRegressor(kernel=kernel, normalize_y=False,
+                                          optimizer='fmin_l_bfgs_b',
                                           n_restarts_optimizer=50)
         model2.fit(X, Y)
         opti_kernel = model2.kernel_
         print(opti_kernel)
-        model = GaussianProcessRegressor(kernel=opti_kernel, normalize_y=False, optimizer=None,
+        model = GaussianProcessRegressor(kernel=opti_kernel, normalize_y=False,
+                                         optimizer=None,
                                          n_restarts_optimizer=1)
         k_fold_chk(len(Y) * 0.8)
         model.fit(X, Y)
@@ -459,7 +463,7 @@ if __name__ == '__main__':
         for i in range(total_iter):
             if i == int(1 * total_iter / 5):
                 op2.n_samples = n_samples
-                op2.theta_space = around(arange(0.0, 1, theta_increment / (90)), 5)
+                op2.theta_space = around(arange(0.0, 1, theta_increment/90), 5)
             if i % 3 == 0:
                 EE_weight = 0.3
                 Acquisition_func = 'LCB'
@@ -474,7 +478,7 @@ if __name__ == '__main__':
                                     weight=EE_weight, seed_val=(i + 1))
 
             # sample the point
-            x_new = np.atleast_2d(x_new.reshape(-1, 3))*89
+            x_new = np.atleast_2d(x_new.reshape(-1, 3))*(theta_max - theta_min) + theta_min
             tmp_out = optim_test(x_new, geo_prop=geo_dict, mat_prop=mat_dict, ny=ny_optimization)
             actual = objective_function(design_load, tmp_out)
             ypcr = tmp_out['Pcr']
@@ -488,7 +492,7 @@ if __name__ == '__main__':
             Y = vstack((Y, [actual]))
             Y_Pcr = np.hstack((Y_Pcr, [ypcr]))
             Y_vol = np.hstack((Y_vol, [yvol]))
-            
+
             if i % 100 == 0:  # just to keep track of how many iterations are done
                 print(f"Iteration #: {i}")
 
@@ -499,7 +503,7 @@ if __name__ == '__main__':
 
             # Fit the model for next iteration
             model.fit(X, Y)
-            
+
             #design space plots, activate if needed
             #if i in [15, 30, 75]:
                 #plot_bo_frame(X, Y, model, x_new=x_new, t=i, save_path=f"bo_frame_t{i}.pdf")
