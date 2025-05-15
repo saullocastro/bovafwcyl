@@ -46,9 +46,9 @@ class MyGA(om.ExplicitComponent):
             var2 = 'layer%02d_T1' % (layer+1)
             var3 = 'layer%02d_T21' % (layer+1)
             thick = 'layer%02d_thick' % (layer+1)
-            self.add_input(var1, val=1.0)
-            self.add_input(var2, val=1.0)
-            self.add_input(var3, val=1.0)
+            self.add_input(var1, val=1.0+3.3)
+            self.add_input(var2, val=1.0+3.3)
+            self.add_input(var3, val=1.0+3.3)
             self.add_discrete_input(thick, val=0)
         self.add_output('objective', val=1.0)
 
@@ -112,10 +112,11 @@ class MyGA(om.ExplicitComponent):
         self.individuals.append(data)
 
         if objective < self.best_individual['objective']:
-            self.best_individual['objective'] = objective
-            self.best_individual['desvars'] = desvars
-            self.best_individual['it'] = it
-            self.best_individual['out'] = out
+            if (abs(out['Pcr']) > 0.95 * self.design_load) and (abs(out['Pcr']) < 3.0 * self.design_load):
+                self.best_individual['objective'] = objective
+                self.best_individual['desvars'] = desvars
+                self.best_individual['it'] = it
+                self.best_individual['out'] = out
 
         if (it + 1) % self.pop_size == 0:
             gen = (it + 1)/self.pop_size - 1
@@ -137,10 +138,10 @@ if __name__ == '__main__':
     #     scipy.sparse.linalg solvers can already use quite well the SMP
     design_loads = [
         50e3,
-        100e3,
-        200e3,
-        500e3,
-        1000e3,
+        #100e3,
+        #200e3,
+        #500e3,
+        #1000e3,
     ]
     for design_load in design_loads:
         print('___________')
@@ -150,7 +151,7 @@ if __name__ == '__main__':
         prob = om.Problem()
         prob.model.add_subsystem('myGA', MyGA(), promotes=['*'])
         myGA = prob.model.myGA
-        myGA.max_layers = 3
+        myGA.max_layers = 1
         myGA.design_load = design_load
 
         bit_size = 6   #
@@ -175,9 +176,9 @@ if __name__ == '__main__':
             var2 = 'layer%02d_T1' % (layer+1)
             var3 = 'layer%02d_T21' % (layer+1)
             thick = 'layer%02d_thick' % (layer+1)
-            prob.model.add_design_var(var1, lower=0., upper=90.)
-            prob.model.add_design_var(var2, lower=0., upper=90.)
-            prob.model.add_design_var(var3, lower=0., upper=90.)
+            prob.model.add_design_var(var1, lower=3.3, upper=87.7)
+            prob.model.add_design_var(var2, lower=3.3, upper=87.7)
+            prob.model.add_design_var(var3, lower=3.3, upper=87.7)
             prob.model.add_design_var(thick, lower=0, upper=1)
             #bits.append((var1, bit_size)) # making it discrete
             #bits.append((var2, bit_size)) # making it discrete

@@ -168,22 +168,9 @@ def optim_test(desvars, geo_prop=None, mat_prop=None, ny=60, vol_only=False,
     #TODO calculate steering radius constraint
     x_space = np.linspace(0, L, 1000)
     theta_min = []
-    theta_max = []
     for desvar in desvars:
         theta_space = theta_func(x_space, L, desvar)
         theta_min.append(theta_space.min())
-        theta_max.append(theta_space.max())
-
-    # angle constraints
-    # NOTE values taken from Wang et al.
-    # https://doi.org/10.1007/s00158-022-03227-8#Sec3
-    for k, desvar in enumerate(desvars):
-        # minimum angle constraint
-        if abs(theta_min[k]) < 3.3:
-            return out
-        # maximum angle constraint
-        if abs(theta_max[k]) > 87.7:
-            return out
 
     for n1, n2, n3, n4 in zip(n1s, n2s, n3s, n4s):
         shell = BFSCCylinderSanders(nint)
@@ -212,6 +199,8 @@ def optim_test(desvars, geo_prop=None, mat_prop=None, ny=60, vol_only=False,
             for k, desvar in enumerate(desvars):
                 theta = theta_func(x_local, L, desvar)
                 steering_angle = theta - theta_min[k]
+                if abs(steering_angle) > 87:
+                    return out
                 plyt_loc = plyt / np.cos(np.deg2rad(steering_angle))
 
                 stack.append(theta)
@@ -293,9 +282,9 @@ def optim_test(desvars, geo_prop=None, mat_prop=None, ny=60, vol_only=False,
     # solving
     PREC = 1/Kuu.diagonal().max()
     if cg_x0 is None:
-        uu, info = cg(PREC*Kuu, PREC*fu, atol=0)
+        uu, info = cg(PREC*Kuu, PREC*fu, atol=1e-5, rtol=0)
     else:
-        uu, info = cg(PREC*Kuu, PREC*fu, x0=cg_x0[bu], atol=0)
+        uu, info = cg(PREC*Kuu, PREC*fu, x0=cg_x0[bu], atol=1e-6, rtol=0)
     if info != 0:
         uu = spsolve(Kuu, fu)
     u[bu] = uu
@@ -337,7 +326,7 @@ def optim_test(desvars, geo_prop=None, mat_prop=None, ny=60, vol_only=False,
     except:
         #NOTE works, but slower than lobpcg
         eigvals, eigvecsu = eigsh(A=Kuu, k=num_eigvals, which='SM', M=KGuu,
-                tol=1e-9, sigma=1., mode='buckling')
+                tol=1e-5, sigma=1., mode='buckling')
         load_mult = -eigvals
 
     f = np.zeros(N)
@@ -363,7 +352,6 @@ def objective_function(design_load, out):
     objective = factor*out['rel_vol']
     assert objective > 0
     return objective
-
 
 if __name__ == '__main__':
     # import addcopyfighandler
