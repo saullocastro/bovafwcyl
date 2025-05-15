@@ -502,14 +502,14 @@ if __name__ == '__main__':
                     print(f"\n Best Design Yet: \n Angles = {x_best} \n Y = {float(y_best):.5f} \n PCR = {float(pcr_best/1000):.2f} kN \n Weight = {float(vol_best*1600):.4f} kg")
 
                     # save/update results regularly to visualize what's going on
-                    np.savetxt("xopt{}t_iter{}_{}layered_{}kN_{}.csv".format(ini_times, total_iter, MAX_LAYERS, int(design_load / 1000),
-                                                                  Acquisition_func), X[ini_pop_size:], delimiter=',')
-                    np.savetxt("yopt{}t_iter{}_{}layered_{}kN_{}.csv".format(ini_times, total_iter, MAX_LAYERS, int(design_load / 1000),
-                                                                  Acquisition_func), Y[ini_pop_size:], delimiter=',')
-                    np.savetxt("ypcr{}t_iter{}_{}layered_{}kN_{}.csv".format(ini_times, total_iter, MAX_LAYERS, int(design_load / 1000),
-                                                                  Acquisition_func), Y_Pcr[ini_pop_size:], delimiter=',')
-                    np.savetxt("yvol{}t_iter{}_{}layered_{}kN_{}.csv".format(ini_times, total_iter, MAX_LAYERS, int(design_load / 1000),
-                                                                  Acquisition_func), Y_vol[ini_pop_size:], delimiter=',')
+                    np.savetxt("xopt{}t_iter{}_{}layered_{}kN.csv".format(ini_times, total_iter, MAX_LAYERS, int(design_load / 1000)), 
+                               X[ini_pop_size:], delimiter=',')
+                    np.savetxt("yopt{}t_iter{}_{}layered_{}kN.csv".format(ini_times, total_iter, MAX_LAYERS, int(design_load / 1000)), 
+                               Y[ini_pop_size:], delimiter=',')
+                    np.savetxt("ypcr{}t_iter{}_{}layered_{}kN.csv".format(ini_times, total_iter, MAX_LAYERS, int(design_load / 1000)), 
+                               Y_Pcr[ini_pop_size:], delimiter=',')
+                    np.savetxt("yvol{}t_iter{}_{}layered_{}kN.csv".format(ini_times, total_iter, MAX_LAYERS, int(design_load / 1000)), 
+                               Y_vol[ini_pop_size:], delimiter=',')
                 else:                    
                     print(f"=> iter {i+1} of {total_iter} | No feasible design yet")
 
