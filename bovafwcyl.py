@@ -318,7 +318,7 @@ if __name__ == '__main__':
         ini_times = 10  # No of times of Input variables initial sample is
         ini_pop_size = ini_times * INPUT_VARS  # No of Initial points for GP fit
         n_samples = int(ini_pop_size/5)  # int(ini_pop_size/5)          	# Population size when optimizing
-        total_iter = 1500  # Total iterations
+        total_iter = 2500  # Total iterations
         tol = 1e-3  # Tolerance
 
         Acquisition_func = 'LCB'  # Choose Between "MPI", "EI" or "LCB" (default LCB)
@@ -500,6 +500,16 @@ if __name__ == '__main__':
                     vol_best=Y_vol[idx]
                     print(f"=> iter {i+1} of {total_iter} | f() = {float(est):.4f}, actual = {float(actual):.4f}")
                     print(f"\n Best Design Yet: \n Angles = {x_best} \n Y = {float(y_best):.5f} \n PCR = {float(pcr_best/1000):.2f} kN \n Weight = {float(vol_best*1600):.4f} kg")
+
+                    # save/update results regularly to visualize what's going on
+                    np.savetxt("xopt{}t_iter{}_{}layered_{}kN_{}.csv".format(ini_times, total_iter, MAX_LAYERS, int(design_load / 1000),
+                                                                  Acquisition_func), X[ini_pop_size:], delimiter=',')
+                    np.savetxt("yopt{}t_iter{}_{}layered_{}kN_{}.csv".format(ini_times, total_iter, MAX_LAYERS, int(design_load / 1000),
+                                                                  Acquisition_func), Y[ini_pop_size:], delimiter=',')
+                    np.savetxt("ypcr{}t_iter{}_{}layered_{}kN_{}.csv".format(ini_times, total_iter, MAX_LAYERS, int(design_load / 1000),
+                                                                  Acquisition_func), Y_Pcr[ini_pop_size:], delimiter=',')
+                    np.savetxt("yvol{}t_iter{}_{}layered_{}kN_{}.csv".format(ini_times, total_iter, MAX_LAYERS, int(design_load / 1000),
+                                                                  Acquisition_func), Y_vol[ini_pop_size:], delimiter=',')
                 else:                    
                     print(f"=> iter {i+1} of {total_iter} | No feasible design yet")
 
