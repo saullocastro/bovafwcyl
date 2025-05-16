@@ -272,7 +272,7 @@ def k_fold_chk(IP_times):
 
 
 if __name__ == '__main__':
-    initial_sampling_size = 5.68
+    initial_sampling_size = 4.68
     ny_init_sampling = 55
     ny_optimization = 55
     ny_verification = 65
