@@ -339,7 +339,7 @@ if __name__ == '__main__':
         # NOTE values taken from Wang et al.
         # https://doi.org/10.1007/s00158-022-03227-8 #Sec3
 
-        theta_space = around(arange(0.0, 1, initial_sampling_size/(theta_max - theta_min), 5)
+        theta_space = around(arange(0.0, 1, initial_sampling_size/(theta_max - theta_min)), 5)
         del_theta_space = around(arange(-1, 1, initial_sampling_size/del_theta), 5)
 
         print('Begin Initial sample')
@@ -368,7 +368,7 @@ if __name__ == '__main__':
         Y_vol = []
         for des_i in X:
             ii += 1
-            des_i = np.atleast_2d(des_i.reshape(-1, 3))*(theta_max  theta_min) + theta_min
+            des_i = np.atleast_2d(des_i.reshape(-1, 3))*(theta_max - theta_min) + theta_min
             tmp_out = optim_test(des_i, geo_prop=geo_dict, mat_prop=mat_dict, ny=ny_init_sampling)
             Y_obj = objective_function(design_load, tmp_out)
             Pcr = tmp_out['Pcr']
@@ -388,7 +388,7 @@ if __name__ == '__main__':
         np.savetxt(load_dir + "finalx_{}layered_{}kN_{}iter.csv".format(MAX_LAYERS, int(design_load / 1000), total_iter), Xx, delimiter=',')
         np.savetxt(load_dir + "finaly_{}layered_{}kN_{}iter.csv".format(MAX_LAYERS, int(design_load / 1000), total_iter), Yx, delimiter=',')
 
-        theta_space = around(arange(0.0, 1, 2*theta_increment/(theta_max - theta_min), 5)
+        theta_space = around(arange(0.0, 1, 2*theta_increment/(theta_max - theta_min)), 5)
         del_theta_space = around(arange(-1, 1, theta_increment/del_theta), 5)
         des_space = []
         for i in range(MAX_LAYERS):
@@ -467,7 +467,7 @@ if __name__ == '__main__':
         for i in range(total_iter):
             if i == int(1 * total_iter / 5):
                 op2.n_samples = n_samples
-                op2.theta_space = around(arange(0.0, 1, theta_increment/(theta_max - theta_min), 5)
+                op2.theta_space = around(arange(0.0, 1, theta_increment/(theta_max - theta_min)), 5)
             if i % 3 == 0:
                 EE_weight = 0.3
                 Acquisition_func = 'LCB'
