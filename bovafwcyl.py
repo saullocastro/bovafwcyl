@@ -540,8 +540,8 @@ if __name__ == '__main__':
                 print("Tolerance Achieved")
                 break
 
-            #check if no new best results found upto 100 iterations
-            if vol_rep_count >=5:
+            #check if no new best results found in total of 300 iterations
+            if vol_rep_count >=15:
                 print("Saturation Reached | no new best results being found")
                 break
 
