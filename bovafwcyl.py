@@ -452,6 +452,8 @@ if __name__ == '__main__':
         model.fit(X, Y)
         print('model_fit done')
 
+        prev_vol_best = None
+        vol_rep_count = 0
         print('Optimization Progress:')
         # ___________________________________________________________
         ## Optimization
@@ -510,9 +512,15 @@ if __name__ == '__main__':
                                Y_Pcr[ini_pop_size:], delimiter=',')
                     np.savetxt("yvol{}t_iter{}_{}layered_{}kN.csv".format(ini_times, total_iter, MAX_LAYERS, int(design_load / 1000)), 
                                Y_vol[ini_pop_size:], delimiter=',')
+                    
+                    if prev_vol_best is not None and np.isclose (vol_best, prev_vol_best, atol=1e-6):
+                        vol_rep_count +=1
+                    else:
+                        vol_rep_count = 0
+                    prev_vol_best = vol_best
                 else:                    
                     print(f"=> iter {i+1} of {total_iter} | No feasible design yet")
-
+            
             # Fit the model for next iteration
             model.fit(X, Y)
             
@@ -530,6 +538,11 @@ if __name__ == '__main__':
             k = 25  # or any threshold you want
             if np.any(counts >= k):
                 print("Tolerance Achieved")
+                break
+
+            #check if no new best results found upto 100 iterations
+            if vol_rep_count >=5:
+                print("Saturation Reached | no new best results being found")
                 break
 
         ##best result
