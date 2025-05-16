@@ -48,7 +48,7 @@ class OptParam(object):
 def sort_desvar(desvars):
     desvars2 = []
     for i in range(MAX_LAYERS):
-        T1, T2, T3 = desvars[3*i:3*(i+1)] * 87.7
+        T1, T2, T3 = desvars[3*i:3*(i+1)]*(theta_max - theta_min) + theta_min
         desvars2.append([abs(T1), T2, abs(T3)])
     return around(desvars2, 2)
 
@@ -162,7 +162,7 @@ def plot_bo_frame(X, Y, model, x_new=None, t=1, save_path=None):
         ax1.annotate("new observation", xy=(x_new[0, 0], y_new),
                      xytext=(x_new[0, 0] + 0.04, y_new + 0.3),
                      arrowprops=dict(arrowstyle="->", lw=1.5), fontsize=14, fontname = "Times New Roman")
-        
+
     ax1.set_ylabel("Objective", fontname = "Times New Roman", fontsize=18, labelpad=5)
     ax1.set_xticks([])
     ax1.set_yticks([])
@@ -272,20 +272,21 @@ def k_fold_chk(IP_times):
 
 
 if __name__ == '__main__':
+    initial_sampling_size = 5.68
     ny_init_sampling = 55
     ny_optimization = 55
     ny_verification = 65
 
     layers_loads = (
                     (1,  50e3),
-                    #(2, 100e3),
-                    #(2, 200e3),
-                    #(2, 500e3),
-                    #(3, 200e3),
-                    #(3, 500e3),
-                    #(3, 1000e3),
-                    #(4, 500e3),
-                    #(4, 1000e3)
+                    (2, 100e3),
+                    (2, 200e3),
+                    (2, 500e3),
+                    (3, 200e3),
+                    (3, 500e3),
+                    (3, 1000e3),
+                    (4, 500e3),
+                    (4, 1000e3)
                     )
     for MAX_LAYERS, design_load in layers_loads:
         # ___________________________________________________________
@@ -309,6 +310,8 @@ if __name__ == '__main__':
         )
 
         # Objective Parameters
+        theta_min = 3.3
+        theta_max = 87.7
         del_theta = 70  # in degrees; Max diffrence in angles of T1, T2 and T3
         theta_increment = 4.68  # in degrees; differnce between neighbouring angles
 
@@ -332,11 +335,12 @@ if __name__ == '__main__':
         # DESIGN SPACE
 
         # keeping theta increment constant at 5 deg for initial sampling
+
         # NOTE values taken from Wang et al.
         # https://doi.org/10.1007/s00158-022-03227-8 #Sec3
-        #3.3 - 87.7 is the ply angle range under_observation
-        theta_space = around(arange(3.3/87.7, 1, 4.68 / 87.7), 5) 
-        del_theta_space = around(arange(-1, 1, 4.68 / del_theta), 5)
+
+        theta_space = around(arange(0.0, 1, initial_sampling_size/(theta_max - theta_min), 5)
+        del_theta_space = around(arange(-1, 1, initial_sampling_size/del_theta), 5)
 
         print('Begin Initial sample')
         X = []
@@ -356,6 +360,7 @@ if __name__ == '__main__':
         op.space = Space(des_space)
 
         ii = 0
+        Y = []
         lhs = Lhs(lhs_type="classic", criterion=None)
         Y = []
         X = random_desvar(op)
@@ -363,7 +368,7 @@ if __name__ == '__main__':
         Y_vol = []
         for des_i in X:
             ii += 1
-            des_i = np.atleast_2d(des_i.reshape(-1, 3))
+            des_i = np.atleast_2d(des_i.reshape(-1, 3))*(theta_max  theta_min) + theta_min
             tmp_out = optim_test(des_i, geo_prop=geo_dict, mat_prop=mat_dict, ny=ny_init_sampling)
             Y_obj = objective_function(design_load, tmp_out)
             Pcr = tmp_out['Pcr']
@@ -383,8 +388,8 @@ if __name__ == '__main__':
         np.savetxt(load_dir + "finalx_{}layered_{}kN_{}iter.csv".format(MAX_LAYERS, int(design_load / 1000), total_iter), Xx, delimiter=',')
         np.savetxt(load_dir + "finaly_{}layered_{}kN_{}iter.csv".format(MAX_LAYERS, int(design_load / 1000), total_iter), Yx, delimiter=',')
 
-        theta_space = around(arange(3.3/87.7, 1, 2 * theta_increment / 87.7), 5)
-        del_theta_space = around(arange(-1, 1, theta_increment / del_theta), 5)
+        theta_space = around(arange(0.0, 1, 2*theta_increment/(theta_max - theta_min), 5)
+        del_theta_space = around(arange(-1, 1, theta_increment/del_theta), 5)
         des_space = []
         for i in range(MAX_LAYERS):
             des_space.append(theta_space)
@@ -426,7 +431,6 @@ if __name__ == '__main__':
         X = asarray(X[good_set])
 
         # reshape into rows and cols
-        # NOTE no longer needed: X = X.reshape(len(X), INPUT_VARS - 1)
         Y = Y.reshape(len(Y), 1)
 
         # ___________________________________________________________
@@ -441,26 +445,29 @@ if __name__ == '__main__':
         mat32 = kernels.Matern(length_scale=len_scale, nu=1.5)
         kernel = mat32  # + ln1 * prdc
         # Normalizing False as its done already
-        model2 = GaussianProcessRegressor(kernel=kernel, normalize_y=False, optimizer='fmin_l_bfgs_b',
+        model2 = GaussianProcessRegressor(kernel=kernel, normalize_y=False,
+                                          optimizer='fmin_l_bfgs_b',
                                           n_restarts_optimizer=50)
         model2.fit(X, Y)
         opti_kernel = model2.kernel_
         print(opti_kernel)
-        model = GaussianProcessRegressor(kernel=opti_kernel, normalize_y=False, optimizer=None,
+        model = GaussianProcessRegressor(kernel=opti_kernel, normalize_y=False,
+                                         optimizer=None,
                                          n_restarts_optimizer=1)
         k_fold_chk(len(Y) * 0.8)
         model.fit(X, Y)
-        print('model_fit done')
 
-        prev_vol_best = None
-        vol_rep_count = 0
+        print('model_fit done')
+        Y_best = []
+        Y_log = []
+
         print('Optimization Progress:')
         # ___________________________________________________________
         ## Optimization
         for i in range(total_iter):
             if i == int(1 * total_iter / 5):
                 op2.n_samples = n_samples
-                op2.theta_space = around(arange(3.3/87.7, 1, theta_increment / (87.7)), 5)
+                op2.theta_space = around(arange(0.0, 1, theta_increment/(theta_max - theta_min), 5)
             if i % 3 == 0:
                 EE_weight = 0.3
                 Acquisition_func = 'LCB'
@@ -475,7 +482,7 @@ if __name__ == '__main__':
                                     weight=EE_weight, seed_val=(i + 1))
 
             # sample the point
-            x_new = np.atleast_2d(x_new.reshape(-1, 3))*87.7
+            x_new = np.atleast_2d(x_new.reshape(-1, 3))*(theta_max - theta_min) + theta_min
             tmp_out = optim_test(x_new, geo_prop=geo_dict, mat_prop=mat_dict, ny=ny_optimization)
             actual = objective_function(design_load, tmp_out)
             ypcr = tmp_out['Pcr']
@@ -490,44 +497,23 @@ if __name__ == '__main__':
             Y_Pcr = np.hstack((Y_Pcr, [ypcr]))
             Y_vol = np.hstack((Y_vol, [yvol]))
 
-            # for feasible design a constraint on PCR (within 0.95 - 3 times design load) is applied
-            if i % 20 == 0: #print best feasible value after every 20 iterations
-                feasible = ((3*design_load > abs(Y_Pcr)) &  (abs(Y_Pcr) >= 0.95*design_load))
-                if np.any(feasible):
-                    ix = argmin(Y[feasible]) #within feasible designs, least objective function is checked
-                    idx=np.where(feasible)[0][ix]
-                    x_best=X[idx]
-                    y_best=Y[idx]
-                    pcr_best=Y_Pcr[idx]
-                    vol_best=Y_vol[idx]
-                    print(f"=> iter {i+1} of {total_iter} | f() = {float(est):.4f}, actual = {float(actual):.4f}")
-                    print(f"\n Best Design Yet: \n Angles = {x_best} \n Y = {float(y_best):.5f} \n PCR = {float(pcr_best/1000):.2f} kN \n Weight = {float(vol_best*1600):.4f} kg")
+            if i % 100 == 0:  # just to keep track of how many iterations are done
+                print(f"Iteration #: {i}")
 
-                    # save/update results regularly to visualize what's going on
-                    np.savetxt("xopt{}t_iter{}_{}layered_{}kN.csv".format(ini_times, total_iter, MAX_LAYERS, int(design_load / 1000)), 
-                               X[ini_pop_size:], delimiter=',')
-                    np.savetxt("yopt{}t_iter{}_{}layered_{}kN.csv".format(ini_times, total_iter, MAX_LAYERS, int(design_load / 1000)), 
-                               Y[ini_pop_size:], delimiter=',')
-                    np.savetxt("ypcr{}t_iter{}_{}layered_{}kN.csv".format(ini_times, total_iter, MAX_LAYERS, int(design_load / 1000)), 
-                               Y_Pcr[ini_pop_size:], delimiter=',')
-                    np.savetxt("yvol{}t_iter{}_{}layered_{}kN.csv".format(ini_times, total_iter, MAX_LAYERS, int(design_load / 1000)), 
-                               Y_vol[ini_pop_size:], delimiter=',')
-                    
-                    if prev_vol_best is not None and np.isclose (vol_best, prev_vol_best, atol=1e-6):
-                        vol_rep_count +=1
-                    else:
-                        vol_rep_count = 0
-                    prev_vol_best = vol_best
-                else:                    
-                    print(f"=> iter {i+1} of {total_iter} | No feasible design yet")
-            
+            if i % int(total_iter / 2) == 0:
+                ix = argmin(Y)
+                print('=> iter {} of {} , f()=%3.4f, actual=%.4f'.format(i + 1, total_iter) % (est, actual))
+                print('\n Best Result yet: x={}, y=%.5f'.format(X[ix]) % (Y[ix]))
+
             # Fit the model for next iteration
             model.fit(X, Y)
-            
+
             #design space plots, activate if needed
             #if i in [15, 30, 75]:
                 #plot_bo_frame(X, Y, model, x_new=x_new, t=i, save_path=f"bo_frame_t{i}.pdf")
 
+            Y_best.append(min(Y))
+            Y_log.append(Y[-1])
             # Tolerance
             sorted_vals = np.round(np.sort(Y_vol)[::-1], decimals=10)
 
@@ -540,24 +526,17 @@ if __name__ == '__main__':
                 print("Tolerance Achieved")
                 break
 
-            #check if no new best results found in total of 300 iterations
-            if vol_rep_count >=15:
-                print("Saturation Reached | no new best results being found")
-                break
-
         ##best result
-        feasible = ((3*design_load > abs(Y_Pcr)) &  (abs(Y_Pcr) >= 0.95*design_load))
-        if np.any(feasible):
-            ix = argmin(Y[feasible])
-            print('Max_layer:{}, Design Load:{} N'.format(MAX_LAYERS, design_load))
-            xopt = X[ix]
-            print('Acquisition func:', Acquisition_func, 'w:', EE_weight)
-            print('Best Result: x={}, Objective=%.5f'.format(xopt) % (Y[ix]))
-            xopt = np.atleast_2d(xopt.reshape(-1, 3))
-            out = optim_test(xopt, geo_prop=geo_dict, mat_prop=mat_dict, ny=ny_verification)
-            print('Volume:', out['volume'], 'Pcr:', abs(out['Pcr']) * 0.001, 'kN,', ' rel_vol =', out['rel_vol'])
-        else:
-            print('No feasible design')
+        ix = argmin(Y)
+        print('Max_layer:{}, Design Load:{} N'.format(MAX_LAYERS, design_load))
+        xopt = sort_desvar(X[ix])
+
+        print('Acquisition func:', Acquisition_func, 'w:', EE_weight)
+        print('Best Result: x={}, Objective=%.5f'.format(xopt) % (Y[ix]))
+        xopt = np.atleast_2d(xopt.reshape(-1, 3))
+        out = optim_test(xopt, geo_prop=geo_dict, mat_prop=mat_dict, ny=ny_verification)
+        print('Volume:', out['volume'], 'Pcr:', abs(out['Pcr']) * 0.001, 'kN,', ' rel_vol =', out['rel_vol'])
+
         np.savetxt("xopt{}t_iter{}_{}layered_{}kN_{}.csv".format(ini_times, total_iter, MAX_LAYERS, int(design_load / 1000),
                                                                   Acquisition_func), X[ini_pop_size:], delimiter=',')
         np.savetxt("yopt{}t_iter{}_{}layered_{}kN_{}.csv".format(ini_times, total_iter, MAX_LAYERS, int(design_load / 1000),
