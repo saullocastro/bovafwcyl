@@ -199,7 +199,7 @@ def optim_test(desvars, geo_prop=None, mat_prop=None, ny=60, vol_only=False,
             for k, desvar in enumerate(desvars):
                 theta = theta_func(x_local, L, desvar)
                 steering_angle = theta - theta_min[k]
-                if abs(steering_angle) > 87.7 or abs(steering_angle) < 3.3:
+                if abs(steering_angle) > 87.7:
                     return out
                 plyt_loc = plyt / np.cos(np.deg2rad(steering_angle))
 
