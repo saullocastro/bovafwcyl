@@ -310,7 +310,7 @@ if __name__ == '__main__':
 
         # Objective Parameters
         del_theta = 70  # in degrees; Max diffrence in angles of T1, T2 and T3
-        theta_increment = 5  # in degrees; differnce between neighbouring angles
+        theta_increment = 4.68  # in degrees; differnce between neighbouring angles
 
         # Optimizer parameters
 
@@ -335,8 +335,8 @@ if __name__ == '__main__':
         # NOTE values taken from Wang et al.
         # https://doi.org/10.1007/s00158-022-03227-8 #Sec3
         #3.3 - 87.7 is the ply angle range under_observation
-        theta_space = around(arange(3.3/87.7, 1, 5 / 87.7), 5) 
-        del_theta_space = around(arange(-1, 1, 5 / del_theta), 5)
+        theta_space = around(arange(3.3/87.7, 1, 4.68 / 87.7), 5) 
+        del_theta_space = around(arange(-1, 1, 4.68 / del_theta), 5)
 
         print('Begin Initial sample')
         X = []
