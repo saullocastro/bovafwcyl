@@ -125,10 +125,14 @@ def acq_LCB(xsample, model, exploration_weight=0.3):
     f_acqu = (1 - exploration_weight) * m - exploration_weight * s
     return f_acqu
 
+#----Design Space----
 def plot_bo_frame(X, Y, model, x_new=None, t=1, save_path=None):
     X_grid = np.linspace(0, 1, 500).reshape(-1, 1)
     dim = X.shape[1]
-    X_full = np.tile(X_grid, (1, dim))
+    X_full = np.zeros((len(X_grid), dim))
+    X_median = np.median(X, axis=0)
+    X_full[:] = X_median
+    X_full[:, 0] = X_grid.flatten()
 
     mu, sigma = model.predict(X_full, return_std=True)
     sigma[sigma < 1e-6] = 1e-6
@@ -154,15 +158,28 @@ def plot_bo_frame(X, Y, model, x_new=None, t=1, save_path=None):
     ax1.plot(x_vals, mu_vals, 'k-', lw=2)
 
     # Dashed line for observations
-    shown_obs = min(10, len(X))
-    ax1.plot(X[:shown_obs, 0], Y[:shown_obs], 'bo', markersize=5)
+    shown_obs = 10  # or any number
+    X_plot = X / (theta_max - theta_min)
+    X_recent = X_plot[-(shown_obs+1):-1]
+    Y_recent = (Y[-(shown_obs+1):-1] / y_norm).flatten()
+    y_band_min = (mu_vals - sigma_vals).min()
+    y_band_max = (mu_vals + sigma_vals).max()
+    y_recent_min = Y_recent.min()
+    y_recent_max = Y_recent.max()
+
+    y_min = min(y_band_min, y_recent_min)
+    y_max = max(y_band_max, y_recent_max)
+    y_margin = 0.05 * (y_max - y_min + 1e-8)
+    
+    ax1.scatter(X_recent[:, 0], Y_recent, color='blue', s=30, zorder=3)
     if x_new is not None:
         y_new = surrogate(model, x_new)
-        ax1.plot(x_new[0, 0], y_new, 'ro', markersize=7)
+
+        ax1.plot(x_new[0, 0], y_new, 'ro', markersize=7, zorder=4)
         ax1.annotate("new observation", xy=(x_new[0, 0], y_new),
                      xytext=(x_new[0, 0] + 0.04, y_new + 0.3),
-                     arrowprops=dict(arrowstyle="->", lw=1.5), fontsize=14, fontname = "Times New Roman")
-
+                     arrowprops=dict(arrowstyle="->", lw=1.5), fontsize=18, fontname = "Times New Roman")
+        
     ax1.set_ylabel("Objective", fontname = "Times New Roman", fontsize=18, labelpad=5)
     ax1.set_xticks([])
     ax1.set_yticks([])
@@ -183,7 +200,7 @@ def plot_bo_frame(X, Y, model, x_new=None, t=1, save_path=None):
     ax2.set_xlabel("Design variable", fontname = "Times New Roman", fontsize=18, labelpad=18)
     ax2.set_yticks([])
     ax1.set_xlim(X_grid.min() - 0.05, X_grid.max() + 0.05)
-    ax1.set_ylim(mu.min() - 0.2, mu.max() + 0.2)
+    ax1.set_ylim(y_min - y_margin, y_max + y_margin)
     ax2.set_ylim(0, np.max(ei) * 1.4)
 
     # No borders for subplot
@@ -192,8 +209,72 @@ def plot_bo_frame(X, Y, model, x_new=None, t=1, save_path=None):
             spine.set_visible(False)
 
     fig.tight_layout(pad=2.0)
+    #plt.show()
     if save_path:
         plt.savefig(save_path, dpi=1200, bbox_inches='tight')
+    else:
+        plt.show()
+
+#---Control Points------
+def plot_control_points(x_new_with_A, mode_field, 
+                        L=0.3, R=0.15, theta_min=3.3, theta_max=87.7,
+                        save_path=None, jitter_norm=0.01):
+    """
+    Plots T1, T2, T3 control points with color based on activation (A).
+    Applies small normalized jitter to visually separate overlapping points.
+
+    Parameters:
+        x_new_with_A : ndarray of shape (n_layers, 4) - [T1, T2, T3, A]
+        mode_field   : 2D array for contour background
+        jitter_norm  : float - normalized jitter amount (recommended ~0.005)
+    """
+    x_new_with_A = np.atleast_2d(x_new_with_A)
+    assert x_new_with_A.shape[1] == 4, "Expected shape (n_layers, 4): [T1, T2, T3, A]"
+
+    num_layers = x_new_with_A.shape[0]
+    layer_height = L / num_layers
+
+    nx, ny = mode_field.shape
+    x = np.linspace(0, 2 * np.pi * R, ny)
+    z = np.linspace(0, L, nx)
+    X, Z = np.meshgrid(x, z)
+
+    x_all, z_all, colors = [], [], []
+
+    for i, (T1, T2, T3, A) in enumerate(x_new_with_A):
+        angles = np.array([T1, T2, T3])
+        norm_angles = angles / (theta_max - theta_min)
+        jitter_array = np.array([-2, 0, 2]) * jitter_norm
+        norm_angles = np.clip(norm_angles + jitter_array, 0, 1)
+
+        z_pos = (i + 0.5) * layer_height
+        for norm_angle in norm_angles:
+            x_pos = norm_angle * (2 * np.pi * R)
+            x_all.append(x_pos)
+            z_all.append(z_pos)
+            colors.append('blue')
+
+        x_pos_a = (0.1 + 0.8 * A) * (2 * np.pi * R)
+        x_all.append(x_pos_a)
+        z_all.append(z_pos)
+        colors.append('red')
+
+    # Plot
+    fig, ax = plt.subplots(figsize=(6, 6))
+    ax.contour(X, Z, mode_field, levels=20, cmap='gray', linewidths=0.8)
+    ax.scatter(x_all, z_all, c=colors, s=50)
+
+    ax.set_xlabel("Circumference")
+    ax.set_ylabel("Axial")
+    ax.set_aspect((2 * np.pi * R) / L)
+    ax.set_xlim(0, 2 * np.pi * R)
+    ax.set_ylim(0, L)
+   
+    plt.tight_layout()
+    
+    if save_path:
+        plt.savefig(save_path, dpi=1200, bbox_inches='tight')
+        plt.close()
     else:
         plt.show()
 
@@ -279,14 +360,14 @@ if __name__ == '__main__':
 
     layers_loads = (
                     (1,  50e3),
-                    (2, 100e3),
-                    (2, 200e3),
-                    (2, 500e3),
-                    (3, 200e3),
-                    (3, 500e3),
-                    (3, 1000e3),
-                    (4, 500e3),
-                    (4, 1000e3)
+                    #(2, 100e3),
+                    #(2, 200e3),
+                    #(2, 500e3),
+                    #(3, 200e3),
+                    #(3, 500e3),
+                    #(3, 1000e3),
+                    #(4, 500e3),
+                    #(4, 1000e3)
                     )
     for MAX_LAYERS, design_load in layers_loads:
         # ___________________________________________________________
@@ -335,7 +416,6 @@ if __name__ == '__main__':
         # DESIGN SPACE
 
         # keeping theta increment constant at 5 deg for initial sampling
-
         # NOTE values taken from Wang et al.
         # https://doi.org/10.1007/s00158-022-03227-8 #Sec3
 
@@ -363,7 +443,7 @@ if __name__ == '__main__':
         Y = []
         lhs = Lhs(lhs_type="classic", criterion=None)
         Y = []
-        X = random_desvar(op)
+        X = random_desvar(op, seed_val=int(design_load//10000))
         Y_Pcr = []
         Y_vol = []
         for des_i in X:
@@ -458,8 +538,7 @@ if __name__ == '__main__':
         model.fit(X, Y)
 
         print('model_fit done')
-        Y_best = []
-        Y_log = []
+        parg = counter = 0
 
         print('Optimization Progress:')
         # ___________________________________________________________
@@ -497,28 +576,82 @@ if __name__ == '__main__':
             Y_Pcr = np.hstack((Y_Pcr, [ypcr]))
             Y_vol = np.hstack((Y_vol, [yvol]))
 
-            if i % 100 == 0:  # just to keep track of how many iterations are done
-                print(f"Iteration #: {i}")
-
-            if i % int(total_iter / 2) == 0:
-                ix = argmin(Y)
+            if i % 100 == 0:  # print best results after certain number of iterations
+                ix = argmin(Y[ini_pop_size:]) + ini_pop_size
+                print('ix = ', ix+1)
                 print('=> iter {} of {} , f()=%3.4f, actual=%.4f'.format(i + 1, total_iter) % (est, actual))
                 print('\n Best Result yet: x={}, y=%.5f'.format(X[ix]) % (Y[ix]))
+                print('                    PCR=%.2f, weight=%.4f' % (abs(Y_Pcr[ix])/1000, Y_vol[ix]*1600))
+                """# weights visualiations for understanding, uncomment if needed
+                np.savetxt("weight_iter{}_{}layered_{}kN.csv".format(total_iter, MAX_LAYERS, int(design_load / 1000)), 
+                           Y_vol[ini_pop_size:]*1600, delimiter=',')"""
+                
+                # check for potetial of improvemnt | if not, break
+                if i>1000:
+                    if parg == ix:
+                        counter +=1
+                        print ('counts= ', counter)
+                        if counter >=5:
+                            print (f"Saturation | No improved results for {counts*100} iterations.")
+                            break
+                    else:
+                        counter = 0
+                        parg = ix
 
             # Fit the model for next iteration
             model.fit(X, Y)
 
-            #design space plots, activate if needed
-            #if i in [15, 30, 75]:
-                #plot_bo_frame(X, Y, model, x_new=x_new, t=i, save_path=f"bo_frame_t{i}.pdf")
+            """#design space plots, activate if needed
+            if i in [15, 23, 33]:
+                x_base = np.median(X, axis=0)  # use median to fill unused positions
+                x_new_flat = (x_new.flatten()) / (theta_max - theta_min)
+                plot_bo_frame(X, Y, model, x_new=x_new_flat.reshape(1, -1), t=i, save_path=f"bo_frame_t{i}.pdf")
 
-            Y_best.append(min(Y))
-            Y_log.append(Y[-1])
+                # Control points
+                x_new = np.atleast_2d(x_new).reshape(MAX_LAYERS, 3)
+                A = ((x_new > 3.3).any(axis=1).astype(int))[:, None]
+                x_new_with_A = np.hstack([x_new, A])
+
+                x_cp = []
+                z_cp = []
+                for j, (T1, T2, T3) in enumerate(x_new):
+                    for angle in [T1, T2, T3]:
+                        norm_angle = (angle - theta_min) / (theta_max - theta_min)
+                        x_pos = norm_angle * 2 * np.pi * geo_dict['R']
+                        z_pos = (j + 0.5) * geo_dict['L'] / MAX_LAYERS
+                        x_cp.append(x_pos)
+                        z_cp.append(z_pos)
+
+                # 2. Avoid singular RBF matrix: add small jitter
+                x_cp = np.array(x_cp) + np.random.uniform(-1e-6, 1e-6, len(x_cp))
+                z_cp = np.array(z_cp) + np.random.uniform(-1e-6, 1e-6, len(z_cp))
+
+                # 3. Assign some scalar value to each point (e.g., random)
+                dummy_vals = np.random.uniform(-1, 1, len(x_cp))
+
+                # 4. Create a fine mesh grid for the mode field
+                nx, ny = 3000, 3000
+                x_grid = np.linspace(0, 2 * np.pi * geo_dict['R'], ny)
+                z_grid = np.linspace(0, geo_dict['L'], nx)
+                C, Z = np.meshgrid(x_grid, z_grid)
+
+                # 5. Interpolate to build mode_field
+                rbf = Rbf(x_cp, z_cp, dummy_vals, function='multiquadric')
+                mode_field = rbf(C, Z)
+
+                plot_control_points(
+                    x_new_with_A, mode_field,
+                    L=geo_dict['L'], R=geo_dict['R'],
+                    theta_min=theta_min, theta_max=theta_max,
+                    save_path=f"cpoints.pdf"
+                    ) """
+            
             # Tolerance
-            sorted_vals = np.round(np.sort(Y_vol)[::-1], decimals=10)
+            valid_vols=Y_vol[Y_vol<1e3]
+            round_vols = np.round(valid_vols, decimals=10)
 
             # Count occurrences of each value
-            unique_vals, counts = np.unique(sorted_vals, return_counts=True)
+            unique_vols, counts = np.unique(round_vols, return_counts=True)
 
             # Check if any value appears at least k times
             k = 25  # or any threshold you want
@@ -527,9 +660,9 @@ if __name__ == '__main__':
                 break
 
         ##best result
-        ix = argmin(Y)
+        ix = argmin(Y[ini_pop_size:]) + ini_pop_size
         print('Max_layer:{}, Design Load:{} N'.format(MAX_LAYERS, design_load))
-        xopt = sort_desvar(X[ix])
+        xopt = X[ix]
 
         print('Acquisition func:', Acquisition_func, 'w:', EE_weight)
         print('Best Result: x={}, Objective=%.5f'.format(xopt) % (Y[ix]))
